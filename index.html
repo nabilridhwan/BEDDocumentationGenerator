@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Document</title>
+</head>
+
+<body class="bg-dark">
+
+    <header class="my-5 bg-dark">
+        <div class="container text-white">
+            <h1>BED Documentation Generator (From Postman)</h1>
+
+            <h5>A tool created by Nabil (Mainly for BED Documentation) that generates boilerplate to help you with your BED documentation</h5>
+
+            <p>Powered by <a href="https://github.com/eligrey/FileSaver.js/">FileSaver</a> and <a href="https://docx.js.org/#/">docx</a></p>
+        </div>
+    </header>
+
+    <div class="container text-white">
+
+
+
+        <h2>Convention of exported Postman requests</h2>
+        <p>Before exporting your collection and uploading it below (which you can find the how-to export right <a href="help.html">here</a>). Please make sure that your
+            Postman requests follows the following convention:</p>
+        <img src="./images/sample.png" alt="" height="600px">
+
+        <ul>
+            <li>
+                <code>BED Assignment</code> is the collection name
+            </li>
+            <li>
+                <code>Discounts, Users, Categories</code> are the folders that group the collections and the requests
+                inside the folders are the action of the request (e.g. <code>Insert a new user</code>) <strong>VERY
+                    IMPORTANT!!!</strong>
+            </li>
+        </ul>
+
+        <div>
+            <a class="btn btn-primary" data-bs-toggle="collapse" href="#sampleShow" role="button" aria-expanded="false"
+                aria-controls="sampleShow">
+                Click to show sample of what you get
+            </a>
+        </div>
+
+        <div class="collapse" id="sampleShow">
+            <div class="row">
+                <div class="col-lg-6">
+                    <h1>From:</h1>
+                    <img src="./images/sample.png" alt="" height="600px">
+                </div>
+
+                <div class="col-lg-6">
+                    <h1>To:</h1>
+                    <img src="./images/samplewordfile.png" alt="" width="100%">
+                </div>
+            </div>
+        </div>
+
+        <div class="form">
+            <div class="form-group">
+                <label for="fileUpload" class="form-label">Select the exported JSON file</label>
+                <input type="file" id="fileUpload" name="fileUpload" accept="application/json" class="form-control">
+                <div id="passwordHelpBlock" class="form-text">
+                    The selected file must be the JSON file that is exported out of Postman
+                </div>
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" onclick="generate()">Click to generate document</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@7.2.0/build/index.min.js"></script>
+
+    <script>
+        let postmanInput = document.getElementById("postmanInput");
+        let rawPostmanReqeust = {};
+        let sectionArray = [];
+        const fileUpload = document.getElementById("fileUpload");
+        const reader = new FileReader();
+
+        function getInput(requests) {
+            const folders = requests.item
+
+            folders.forEach(folder => {
+                const req = folder.item;
+                sectionArray.push(returnHeader(folder.name, docx.HeadingLevel.HEADING_1));
+                sectionArray.push(returnHeader("Database", docx.HeadingLevel.HEADING_2));
+                sectionArray.push(returnHeader("Table", docx.HeadingLevel.HEADING_3));
+                sectionArray.push(returnHeader("Foreign Keys", docx.HeadingLevel.HEADING_3));
+
+                req.forEach(requests => {
+
+                    let path = requests.request.url.path
+                    path[0] = '/' + path[0]
+                    console.log()
+
+                    const headerTitle =
+                        `${requests.name} (${requests.request.method} ${path.join("/")})`;
+
+                    ;
+                    sectionArray.push(returnHeader(headerTitle, docx.HeadingLevel.HEADING_2));
+
+
+                    console.log(headerTitle)
+                    // const rawRequestPath = requests.request.url.raw;
+
+                })
+
+            })
+
+            console.log(sectionArray)
+        }
+
+        function returnHeader(item, level) {
+            return new docx.Paragraph({
+                text: item,
+                heading: level,
+            })
+        }
+
+        function readFile(file) {
+            const reader = new FileReader();
+            reader.addEventListener('load', (event) => {
+                const result = event.target.result;
+                rawPostmanReqeust = JSON.parse(result);
+                getInput(rawPostmanReqeust);
+
+                const doc = new docx.Document({
+                    creator: "Clippy",
+                    title: "Sample Document",
+                    description: "Wowzers",
+                    sections: [{
+                        properties: {},
+                        children: sectionArray
+                    }]
+                });
+
+                docx.Packer.toBlob(doc).then((blob) => {
+                    saveAs(blob, "Generated Boilerplate.docx");
+                    console.log("Document created successfully");
+                });
+            });
+
+            reader.addEventListener('progress', (event) => {
+                if (event.loaded && event.total) {
+                    const percent = (event.loaded / event.total) * 100;
+                    console.log(`Progress: ${Math.round(percent)}`);
+                }
+            });
+            reader.readAsText(file);
+        }
+
+        function generate() {
+            const fileUpload = document.getElementById("fileUpload").files[0]
+            readFile(fileUpload)
+        }
+    </script>
+
+
+</body>
+
+</html>
