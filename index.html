@@ -16,18 +16,18 @@
         <div class="container text-white">
             <h1>BED Documentation Generator (From Postman)</h1>
 
-            <h5>A tool created by Nabil (Mainly for BED Documentation) that generates boilerplate to help you with your BED documentation</h5>
+            <h5>A tool that generates boilerplate to help you with your BED documentation</h5>
 
-            <p>Powered by <a href="https://github.com/eligrey/FileSaver.js/">FileSaver</a> and <a href="https://docx.js.org/#/">docx</a></p>
+            <p>Powered by <a href="https://github.com/eligrey/FileSaver.js/">FileSaver</a> and <a
+                    href="https://docx.js.org/#/">docx</a></p>
         </div>
     </header>
 
     <div class="container text-white">
-
-
-
+        <!-- 
         <h2>Convention of exported Postman requests</h2>
-        <p>Before exporting your collection and uploading it below (which you can find the how-to export right <a href="help.html">here</a>). Please make sure that your
+        <p>Before exporting your collection and uploading it below (which you can find the how-to export right <a
+                href="help.html">here</a>). Please make sure that your
             Postman requests follows the following convention:</p>
         <img src="./images/sample.png" alt="" height="600px">
 
@@ -61,11 +61,14 @@
                     <img src="./images/samplewordfile.png" alt="" width="100%">
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <div class="form">
             <div class="form-group">
-                <label for="fileUpload" class="form-label">Select the exported JSON file</label>
+                <label for="fileUpload" class="form-label">
+                    Select the exported Postman collection JSON file (which you can find the how-to export right <a
+                        href="help.html">here</a>)
+                </label>
                 <input type="file" id="fileUpload" name="fileUpload" accept="application/json" class="form-control">
                 <div id="passwordHelpBlock" class="form-text">
                     The selected file must be the JSON file that is exported out of Postman
@@ -82,42 +85,45 @@
 
     <script>
         let postmanInput = document.getElementById("postmanInput");
-        let rawPostmanReqeust = {};
+        let rawPostmanRequest = {};
         let sectionArray = [];
         const fileUpload = document.getElementById("fileUpload");
         const reader = new FileReader();
 
         function getInput(requests) {
-            const folders = requests.item
+            const item = requests.item
 
-            folders.forEach(folder => {
-                const req = folder.item;
-                sectionArray.push(returnHeader(folder.name, docx.HeadingLevel.HEADING_1));
-                sectionArray.push(returnHeader("Database", docx.HeadingLevel.HEADING_2));
-                sectionArray.push(returnHeader("Table", docx.HeadingLevel.HEADING_3));
-                sectionArray.push(returnHeader("Foreign Keys", docx.HeadingLevel.HEADING_3));
+            item.forEach(branch => {
 
-                req.forEach(requests => {
+                // Check if the item is a folder
+                if (branch.item) {
+                    const req = branch.item;
+                    sectionArray.push(returnHeader(branch.name, docx.HeadingLevel.HEADING_1));
+                    sectionArray.push(returnHeader("Database", docx.HeadingLevel.HEADING_2));
+                    sectionArray.push(returnHeader("Table", docx.HeadingLevel.HEADING_3));
+                    sectionArray.push(returnHeader("Foreign Keys", docx.HeadingLevel.HEADING_3));
+                    req.forEach(requests => {
+                        let path = requests.request.url.path
+                        path[0] = '/' + path[0]
+                        console.log()
+                        const headerTitle =
+                            `${requests.name} (${requests.request.method} ${path.join("/")})`;
+                        sectionArray.push(returnHeader(headerTitle, docx.HeadingLevel.HEADING_2));
 
+                    })
+                } else {
+                    const requests = branch;
                     let path = requests.request.url.path
                     path[0] = '/' + path[0]
                     console.log()
-
                     const headerTitle =
                         `${requests.name} (${requests.request.method} ${path.join("/")})`;
+                    sectionArray.push(returnHeader(headerTitle, docx.HeadingLevel.HEADING_1));
+                }
 
-                    ;
-                    sectionArray.push(returnHeader(headerTitle, docx.HeadingLevel.HEADING_2));
-
-
-                    console.log(headerTitle)
-                    // const rawRequestPath = requests.request.url.raw;
-
-                })
 
             })
-
-            console.log(sectionArray)
+            // console.log(sectionArray)
         }
 
         function returnHeader(item, level) {
@@ -128,38 +134,48 @@
         }
 
         function readFile(file) {
-            const reader = new FileReader();
-            reader.addEventListener('load', (event) => {
-                const result = event.target.result;
-                rawPostmanReqeust = JSON.parse(result);
-                getInput(rawPostmanReqeust);
+            try {
+                const reader = new FileReader();
+                reader.addEventListener('load', (event) => {
+                    const result = event.target.result;
 
-                const doc = new docx.Document({
-                    creator: "Clippy",
-                    title: "Sample Document",
-                    description: "Wowzers",
-                    sections: [{
-                        properties: {},
-                        children: sectionArray
-                    }]
+                    try {
+                        rawPostmanRequest = JSON.parse(result);
+                        // console.log(rawPostmanRequest)
+
+                        getInput(rawPostmanRequest);
+
+                        const doc = new docx.Document({
+                            creator: "Clippy",
+                            title: "Sample Document",
+                            description: "Wowzers",
+                            sections: [{
+                                properties: {},
+                                children: sectionArray
+                            }]
+                        });
+
+                        docx.Packer.toBlob(doc).then((blob) => {
+                            saveAs(blob, "Generated Boilerplate.docx");
+                            console.log("Document created successfully");
+                        });
+                    } catch (e) {
+
+                        // File is not a JSON file
+                        alert("Please choose a valid Postman collection JSON file")
+                    }
                 });
 
-                docx.Packer.toBlob(doc).then((blob) => {
-                    saveAs(blob, "Generated Boilerplate.docx");
-                    console.log("Document created successfully");
-                });
-            });
+                reader.readAsText(file);
+            } catch (e) {
 
-            reader.addEventListener('progress', (event) => {
-                if (event.loaded && event.total) {
-                    const percent = (event.loaded / event.total) * 100;
-                    console.log(`Progress: ${Math.round(percent)}`);
-                }
-            });
-            reader.readAsText(file);
+                // File is not uploaded yet
+                alert("Please upload a file!")
+            }
         }
 
         function generate() {
+            sectionArray = [];
             const fileUpload = document.getElementById("fileUpload").files[0]
             readFile(fileUpload)
         }
